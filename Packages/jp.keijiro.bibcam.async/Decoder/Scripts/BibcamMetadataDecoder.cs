@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using Bibcam.Common;
 
 namespace Bibcam.Decoder {
@@ -14,9 +15,10 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
 
     #region Public members
 
-    public Metadata Metadata => _readbackArray[0];
+    public Metadata Metadata { get; private set; }
+    public int DecodeCount { get; private set; }
 
-    public void Decode(Texture source)
+    public void RequestDecode(Texture source)
     {
         // Lazy allocation
         if (_readbackBuffer == null)
@@ -27,8 +29,8 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
         _shader.SetBuffer(0, "Output", _readbackBuffer);
         _shader.Dispatch(0, 1, 1, 1);
 
-        // Synchronized readback (slow!)
-        _readbackBuffer.GetData(_readbackArray);
+        // Async readback request
+        AsyncGPUReadback.Request(_readbackBuffer, OnReadback);
     }
 
     #endregion
@@ -36,7 +38,12 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
     #region Private members
 
     GraphicsBuffer _readbackBuffer;
-    Metadata[] _readbackArray = new Metadata[1];
+
+    void OnReadback(AsyncGPUReadbackRequest req)
+    {
+        if (!req.hasError) Metadata = req.GetData<Metadata>()[0];
+        DecodeCount++;
+    }
 
     #endregion
 
