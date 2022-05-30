@@ -14,6 +14,7 @@ sealed class BibcamVideoFeeder : MonoBehaviour
 
     [SerializeField] BibcamMetadataDecoder _decoder = null;
     [SerializeField] BibcamTextureDemuxer _demuxer = null;
+    [SerializeField] bool _asynchronous = true;
 
     #endregion
 
@@ -23,7 +24,6 @@ sealed class BibcamVideoFeeder : MonoBehaviour
       = new Queue<(RenderTexture rt, int index)>();
 
     int _count;
-
 
     #endregion
 
@@ -40,12 +40,22 @@ sealed class BibcamVideoFeeder : MonoBehaviour
         var player = GetComponent<VideoPlayer>();
         if (player.texture == null) return;
 
-        // Temporary RT copy
+        if (!_asynchronous)
+        {
+            // Sync pass: Simply decode and demux.
+            _decoder.DecodeSync(player.texture);
+            _demuxer.Demux(player.texture, _decoder.Metadata);
+            return;
+        }
+
+        // Async pass:
+
+        // Source texture copy into a temporary RT
         var video = player.texture;
         var tempRT = RenderTexture.GetTemporary(video.width, video.height);
         Graphics.CopyTexture(video, tempRT);
 
-        // Decoding queue
+        // Decode queuing
         _decoder.RequestDecodeAsync(tempRT);
         _queue.Enqueue((tempRT, _count++));
 
@@ -53,7 +63,7 @@ sealed class BibcamVideoFeeder : MonoBehaviour
         while (_queue.Peek().index < _decoder.DecodeCount)
             RenderTexture.ReleaseTemporary(_queue.Dequeue().rt);
 
-        // Last-decoded frame demuxing
+        // Demuxing with latest decoded frame
         var decoded = _queue.Dequeue().rt;
         _demuxer.Demux(decoded, _decoder.Metadata);
         RenderTexture.ReleaseTemporary(decoded);

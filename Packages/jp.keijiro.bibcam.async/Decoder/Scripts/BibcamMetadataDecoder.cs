@@ -16,6 +16,7 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
     #region Public members
 
     public Metadata Metadata { get; private set; }
+
     public int DecodeCount { get; private set; }
 
     public void DecodeSync(Texture source)
@@ -40,8 +41,6 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
 
     #region Private members
 
-    Metadata[] _readbackArray = new Metadata[1];
-
     GraphicsBuffer _decodeBuffer;
 
     GraphicsBuffer DecodeBuffer
@@ -54,6 +53,8 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
         _shader.SetBuffer(0, "Output", DecodeBuffer);
         _shader.Dispatch(0, 1, 1, 1);
     }
+
+    Metadata[] _readbackArray = new Metadata[1];
 
     void OnReadback(AsyncGPUReadbackRequest req)
     {
