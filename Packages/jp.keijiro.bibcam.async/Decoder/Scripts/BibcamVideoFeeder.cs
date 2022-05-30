@@ -59,8 +59,11 @@ sealed class BibcamVideoFeeder : MonoBehaviour
         _decoder.RequestDecodeAsync(tempRT);
         _queue.Enqueue((tempRT, _count++));
 
-        // Unused old frame disposal
-        while (_queue.Peek().index < _decoder.DecodeCount)
+        // Decoder progress check
+        if (_decoder.DecodeCount <= _queue.Peek().index) return;
+
+        // Skipped frame disposal
+        while (_queue.Peek().index < _decoder.DecodeCount - 1)
             RenderTexture.ReleaseTemporary(_queue.Dequeue().rt);
 
         // Demuxing with latest decoded frame
