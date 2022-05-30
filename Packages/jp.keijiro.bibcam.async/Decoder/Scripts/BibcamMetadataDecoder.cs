@@ -18,26 +18,42 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
     public Metadata Metadata { get; private set; }
     public int DecodeCount { get; private set; }
 
-    public void RequestDecode(Texture source)
+    public void DecodeSync(Texture source)
     {
-        // Lazy allocation
-        if (_readbackBuffer == null)
-            _readbackBuffer = GfxUtil.StructuredBuffer(12, sizeof(float));
+        DispatchDecoder(source);
 
-        // Decoder kernel dispatching
-        _shader.SetTexture(0, "Source", source);
-        _shader.SetBuffer(0, "Output", _readbackBuffer);
-        _shader.Dispatch(0, 1, 1, 1);
+        // Synchronized readback (slow!)
+        DecodeBuffer.GetData(_readbackArray);
+        Metadata = _readbackArray[0];
+        DecodeCount++;
+    }
+
+    public void RequestDecodeAsync(Texture source)
+    {
+        DispatchDecoder(source);
 
         // Async readback request
-        AsyncGPUReadback.Request(_readbackBuffer, OnReadback);
+        AsyncGPUReadback.Request(DecodeBuffer, OnReadback);
     }
 
     #endregion
 
     #region Private members
 
-    GraphicsBuffer _readbackBuffer;
+    Metadata[] _readbackArray = new Metadata[1];
+
+    GraphicsBuffer _decodeBuffer;
+
+    GraphicsBuffer DecodeBuffer
+      => _decodeBuffer ??
+           (_decodeBuffer = GfxUtil.StructuredBuffer(12, sizeof(float)));
+
+    void DispatchDecoder(Texture source)
+    {
+        _shader.SetTexture(0, "Source", source);
+        _shader.SetBuffer(0, "Output", DecodeBuffer);
+        _shader.Dispatch(0, 1, 1, 1);
+    }
 
     void OnReadback(AsyncGPUReadbackRequest req)
     {
@@ -53,8 +69,8 @@ public sealed class BibcamMetadataDecoder : MonoBehaviour
 
     void OnDestroy()
     {
-        _readbackBuffer?.Dispose();
-        _readbackBuffer = null;
+        _decodeBuffer?.Dispose();
+        _decodeBuffer = null;
     }
 
     #endregion

@@ -46,7 +46,7 @@ sealed class BibcamVideoFeeder : MonoBehaviour
         Graphics.CopyTexture(video, tempRT);
 
         // Decoding queue
-        _decoder.RequestDecode(tempRT);
+        _decoder.RequestDecodeAsync(tempRT);
         _queue.Enqueue((tempRT, _count++));
 
         // Unused old frame disposal
