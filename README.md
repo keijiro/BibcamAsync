@@ -1,0 +1,1 @@
+This repository is where I tried adding asynchronous decoding support to the [Bibcam](https://github.com/keijiro/Bibcam) package. I've already merged the feature to the main repository -- This repository is archived for future reference.
